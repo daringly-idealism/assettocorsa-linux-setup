@@ -14,7 +14,6 @@ After running the script you should be able to launch Assetto Corsa from Steam w
 2. Inside the terminal, run
   ```
   curl -Os https://raw.githubusercontent.com/daringly-idealism/assettocorsa-linux-setup/main/assettocorsa-linux-setup.sh
-  nix-shell -p wget gnutar unzip glib protontricks
   ./assettocorsa-linux-setup.sh
   ```
 > **Warning**: Always be careful when running scripts from the internet.

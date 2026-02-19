@@ -1,4 +1,5 @@
-#! /usr/bin/env bash
+#! /usr/bin/env nix-shell
+#! nix-shell -i bash -p wget gnutar unzip glib protontricks
 
 # Checks for unbound variables
 set -u
@@ -82,25 +83,6 @@ function is-set {
   fi
   return 0
 }
-
-# Required packages
-required_packages=("wget" "gnutar" "unzip" "glib" "protontricks")
-pm_install="nix-shell -p"
-
-# Checking if required packages are installed
-for package in "${required_packages[@]}"; do
-  bin="$(basename "$package")"
-  if [[ "$bin" == "glib" ]]; then
-    bin="gio"
-  fi
-  if [[ "$bin" == "gnutar" ]]; then
-    bin="tar"
-  fi
-  if ! get-exec "$bin" > /dev/null; then
-    echo "$bin is not installed, run ${bold}$pm_install ${required_packages[*]}${reset} to install."
-    exit 1
-  fi
-done
 
 # Checking temp dir
 if [[ -e "temp/" ]]; then

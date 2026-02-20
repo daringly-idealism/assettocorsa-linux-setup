@@ -229,6 +229,11 @@ function install-proton {
   # Downloading
   echo "Downloading $ProtonGE..."
   subprocess wget -q "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton$GE_version/GE-Proton$GE_version.tar.gz" -P "temp/"
+  echo "Verifying the downloaded copy of $ProtonGE..."
+  subprocess wget -q "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton$GE_version/GE-Proton$GE_version.sha512sum" -P "temp/"
+  cd temp
+  subprocess sha512sum -c "GE-Proton$GE_version.sha512sum"
+  cd ..
   # Removing previous install
   if [[ -d "$COMPAT_TOOLS_DIR/GE-Proton$GE_version" ]]; then
     echo "Removing previous installation of $ProtonGE..."

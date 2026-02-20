@@ -1,5 +1,5 @@
 #! /usr/bin/env nix-shell
-#! nix-shell -i bash -p wget gnutar unzip glib protontricks
+#! nix-shell -i bash -p wget gnutar unzip glib protontricks wineWow64Packages.wayland
 
 # Checks for unbound variables
 set -u
@@ -22,6 +22,7 @@ fi
 
 # Versions
 GE_version="9-20"
+CachyOS_version="cachyos-10.0-20260207"
 CSP_version="0.2.11"
 
 # Defining text styles for readablity
@@ -212,14 +213,23 @@ function check-start-menu-shortcut {
     return 1
   fi
 }
-# Checking if ProtonGE is installed
+# Checking if Proton is installed
+function check-proton-ge {
+  check-proton "ProtonGE" "$GE_version" "GE-Proton$GE_version"
+}
+function check-proton-cachyos {
+  check-proton "CachyOS Proton" "$CachyOS_version" "proton-$CachyOS_version-slr-x86_64_v3"
+}
 function check-proton {
-  local ProtonGE="ProtonGE $GE_version"
-  echo "$ProtonGE is the latest tested version that works. Using any other version may not work."
-  if [[ -d "$COMPAT_TOOLS_DIR/GE-Proton$GE_version" ]]; then
-    local string="Reinstall $ProtonGE?"
+  local proton_name="$1"
+  local version="$2"
+  local versioned_name="$proton_name $version"
+  local release="$3"
+  echo "$versioned_name is the latest tested version that works for a new install. Using any other version may not work."
+  if [[ -d "$COMPAT_TOOLS_DIR/$3" ]]; then
+    local string="Reinstall $versioned_name?"
   else
-    local string="Install $ProtonGE?"
+    local string="Install $versioned_name?"
   fi
   if ask "$string"; then
     install-proton
@@ -227,29 +237,50 @@ function check-proton {
 }
 function install-proton {
   # Downloading
-  echo "Downloading $ProtonGE..."
-  subprocess wget -q "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton$GE_version/GE-Proton$GE_version.tar.gz" -P "temp/"
-  echo "Verifying the downloaded copy of $ProtonGE..."
-  subprocess wget -q "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton$GE_version/GE-Proton$GE_version.sha512sum" -P "temp/"
+  echo "Downloading $versioned_name..."
+  if [[ "$proton_name" = "ProtonGE" ]]; then
+    subprocess wget -q "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton$version/$release.tar.gz" -P "temp/"
+  else
+    subprocess wget -q "https://github.com/CachyOS/proton-cachyos/releases/download/$version-slr/proton-$version-slr-x86_64_v3.sha512sum" -P "temp/"
+  fi
+  echo "Verifying the downloaded copy of $versioned_name..."
+  if [[ "$proton_name" = "ProtonGE" ]]; then
+    subprocess wget -q "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton$version/$release.tar.gz" -P "temp/"
+  else
+    subprocess wget -q "https://github.com/CachyOS/proton-cachyos/releases/download/$version-slr/proton-$version-slr-x86_64_v3.sha512sum" -P "temp/"
+  fi
   cd temp
-  subprocess sha512sum -c "GE-Proton$GE_version.sha512sum"
+  subprocess sha512sum -c "$release.sha512sum"
   cd ..
   # Removing previous install
-  if [[ -d "$COMPAT_TOOLS_DIR/GE-Proton$GE_version" ]]; then
-    echo "Removing previous installation of $ProtonGE..."
-    subprocess rm -rf "$COMPAT_TOOLS_DIR/GE-Proton$GE_version"
+  if [[ -d "$COMPAT_TOOLS_DIR/$release" ]]; then
+    echo "Removing previous installation of $versioned_name..."
+    subprocess rm -rf "$COMPAT_TOOLS_DIR/$release"
   fi
   # Extracting
-  echo "Installing $ProtonGE..."
+  echo "Installing $versioned_name..."
   subprocess mkdir -p "$COMPAT_TOOLS_DIR"
-  subprocess tar -xzf "temp/GE-Proton$GE_version.tar.gz" -C "temp/"
-  subprocess cp -rfa "temp/GE-Proton$GE_version" "$COMPAT_TOOLS_DIR"
+  if [[ "$proton_name" = "ProtonGE" ]]; then
+    subprocess tar -xzf "temp/$release.tar.gz" -C "temp/"
+  else
+    subprocess tar -xJf "temp/$release.tar.xz" -C "temp/"
+  fi
+  subprocess cp -rfa "temp/$release" "$COMPAT_TOOLS_DIR"
   subprocess rm -rf "temp/"
-  echo "${bold}To enable ProtonGE for Assetto Corsa:
+
+  # Extra steps for Proton 10.0 and on
+  if [[ "$proton_name" = "CachyOS Proton" ]]; then
+    export WINE="$(which wine)"
+    export WINESERVER="$(which wineserver)"
+    subprocess protontricks 244210 -q dotnet48
+    subprocess protontricks 244210 win10
+  fi
+
+  echo "${bold}To enable $versioned_name for Assetto Corsa:
  1. Restart Steam
  2. Go to Assetto Corsa > Properties > Compatability
  3. Turn on 'Force the use of a specific Steam Play compatability tool'
- 4. From the drop-down, select $ProtonGE.${reset}"
+ 4. From the drop-down, select $release.${reset}"
 }
 # Asking whether to delete wineprefix
 function check-wineprefix {
@@ -411,7 +442,6 @@ function install-csp {
   echo "Installing fonts required for CSP... (this might take a while)"
   subprocess protontricks 244210 corefonts
 }
-
 function check-csp-config {
   local cfg_file="$AC_COMMON/extension/config/data_alt_mapping.ini"
   if [[ ! -f "$cfg_file" ]]; then
@@ -452,6 +482,7 @@ OPTIONAL_STEPS=(
   check-generated-files
   check-content-manager
   check-csp
+  check-proton-cachyos
   check-csp-config
 )
 echo
